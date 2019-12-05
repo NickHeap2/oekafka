@@ -1,0 +1,5 @@
+*
+!build/oe11/pl/**/*.pl
+!build/ablcontainer/pl/**/*.pl
+!build/assemblies/**/*
+!build/static/**/*

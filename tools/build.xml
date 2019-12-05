@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="application tools" xmlns:if="ant:if" xmlns:unless="ant:unless" xmlns:sonar="antlib:org.sonar.ant">
+    <description>application tools</description>
+
+    <target name="restore" description="Restore" depends="">
+        <nugetrestore
+          nugetExecutable="../tools/nuget.exe"
+          packagesFile="packages.config"
+          destinationDir="packages"/>
+
+    </target>
+</project>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="Application" default="build" xmlns:if="ant:if" xmlns:unless="ant:unless" xmlns:sonar="antlib:org.sonar.ant">
+    <description>Application build</description>
+
+    <!-- version number -->
+    <property name="env.VERSION_NUMBER" value="0.0.0"/>
+    <property name="env.BUILD_SHORT_COMMIT" value=""/>
+    <property name="projectName" value="Application"/>
+
+    <!-- load externals -->
+    <property file="build.properties"/>
+    <property file="default.properties"/>
+    <import file="macrodefs.xml"/>
+
+    <getosprops/>
+    <echo if:set="isWindows">Building on Windows with ${ant.version}</echo>
+    <echo if:set="isUnix">Building on Unix with ${ant.version}</echo>
+
+    <getoelocations/>
+    <property name="env.OEDLC" value="${env.OEDLC11}"/>
+
+    <!-- propath set -->
+    <path id="propath_app">
+        <pathelement path="src"/>
+        <pathelement path="ablcontainer/ABLContainer.pl"/>
+    </path>
+
+    <!-- propath set tests -->
+    <path id="propath_app_tests">
+        <pathelement path="tools/ablunit/ABLUnitMods.pl"/>
+        <pathelement path="tests"/>
+        <pathelement path="src"/>
+        <pathelement path="ablcontainer/ABLContainer.pl"/>
+    </path>
+
+    <!-- compile files set -->
+    <fileset dir="src" id="fileset_app">
+        <include name="**/*.p"/>
+        <include name="**/*.cls"/>
+    </fileset>
+
+    <!-- test files compile set -->
+    <fileset dir="tests" id="fileset_app_tests_compile">
+        <include name="**/*.p"/>
+        <include name="**/*.cls"/>
+    </fileset>
+
+    <!-- test files set -->
+    <fileset dir="tests" id="fileset_app_tests">
+        <include name="**/test_*.p"/>
+        <include name="**/test_*.cls"/>
+    </fileset>
+
+    <!-- db connection set -->
+    <DBConnectionSet id="app_dbs">
+        <DBConnection id="app_dev" logicalName="app" dbName="app" dbDir="${dest.db}" singleUser="true"/>
+    </DBConnectionSet>
+
+    <!-- clean -->
+    <target name="clean" depends="shutdown" description="Remove ALL build artifacts and compile DB">
+        <delete dir="${clean.build}" quiet="true"/>
+        <delete dir="${clean.test}" quiet="true"/>
+        <delete dir="${clean.temp}" quiet="true"/>
+        <delete dir="${dest.db}" quiet="false"/>
+    </target>
+
+    <target name="setup" depends="shutdown,clean,init" description="Initial setup"/>
+
+    <target name="build" depends="init,restore,compile,test,copy_static"/>
+
+    <target name="init" depends="shutdown,createdb,proserve" description="Prepare for compile">
+        <mkdir dir="${clean.build}"/>
+        <mkdir dir="${clean.test}"/>
+        <delete dir="${clean.temp}" quiet="true"/>
+        <mkdir dir="${clean.temp}"/>
+        <mkdir dir="${dest.db}"/>
+    </target>
+
+    <target name="createdb" description="Create compile databases">
+        <createdb dbName="app"
+                  destDir="${dest.db}"
+                  structFile="./db/app.st"
+                  schemaFile="./db/app.df"/>
+    </target>
+
+    <target name="proserve" description="Startup databases">
+        <!-- <proservedb destDir="${dest.db}"
+                    dbName="app"/> -->
+    </target>
+
+    <target name="shutdown" description="Shutdown">
+        <!-- <shutdowndb destDir="${dest.db}"
+                    dbName="app"/> -->
+    </target>
+
+    <!-- compile -->
+    <target name="compile" description="Compile" depends="">
+
+      <property name="absolute.temp" location="${env.TEMP_DIR}"/>
+
+      <oecompile baseDir="src"
+                 databasesid="app_dbs"
+                 propathid="propath_app"
+                 filesetid="fileset_app"
+                 tempDir="${absolute.temp}"
+                 destDir="build/oe11/"
+                 assembliesDir="../assemblies"
+                 metadata="false"
+                 />
+
+      <buildpl baseDir="build/oe11/"
+               destDir="build/oe11/pl/"
+               libraryFile="app.pl"/>
+    </target>
+
+    <!-- test -->
+    <!-- test -->
+    <target name="test" description="Test" depends="">
+      <property name="absolute.temp" location="${env.TEMP_DIR}"/>
+
+      <oecompile baseDir="tests"
+                 databasesid="app_dbs"
+                 propathid="propath_app_tests"
+                 filesetid="fileset_app_tests_compile"
+                 tempDir="${absolute.temp}"
+                 destDir="build/tests/"
+                 assembliesDir="../assemblies"
+                 metadata="false"
+                 displayFiles="1"/>
+
+      <property name="absolute.temp" location="${env.TEMP_DIR}"/>
+
+      <oetest baseDir="tests"
+              databasesid="app_dbs"
+              propathid="propath_app_tests"
+              filesetid="fileset_app_tests"
+              tempDir="${absolute.temp}"
+              destDir="build/oe11/"
+              assembliesDir="../assemblies"
+              />
+    </target>
+
+    <!-- copy_static -->
+    <target name="copy_static" description="Copy static files" depends="">
+        <copy todir="build/static">
+            <fileset dir=".">
+                <include name="start.bat"/>
+                <include name="appsettings.json"/>
+                <different targetdir="build/static" ignoreFileTimes="true"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <!-- restore -->
+    <target name="restore" description="Restore" depends="">
+        <nugetrestore
+          nugetExecutable="tools/nuget.exe"
+          packagesFile="tools/packages.config"
+          destinationDir="tools/packages"/>
+
+        <nugetrestore
+          nugetExecutable="tools/nuget.exe"
+          packagesFile="packages.config"
+          destinationDir="packages"/>
+
+        <addpackagestoassemblies
+          packagesFile="packages.config"
+          packagesDir="packages"
+          assembliesDir="assemblies"/>
+
+        <!-- any native code -->
+        <!-- <copy todir="assemblies/native" flatten="true">
+          <fileset dir="packages">
+            <include name="**/runtimes/win-x64/**/*.*"/>
+          </fileset>
+        </copy> -->
+
+        <!-- copy assemblies to build area -->
+        <copy todir="build/assemblies" flatten="false">
+          <fileset dir="assemblies">
+            <include name="assemblies.xml"/>
+            <include name="**/*.config"/>
+            <include name="**/*.dll"/>
+            <include name="**/*.pdb"/>
+            <include name="**/*.xml"/>
+            <different targetdir="build/assemblies" ignoreFileTimes="true"/>
+          </fileset>
+        </copy>
+
+        <!-- copy ablcontainer pl to build area -->
+        <copy todir="build/ablcontainer/pl/" flatten="true">
+          <fileset dir="ablcontainer">
+            <include name="**/*.pl"/>
+            <different targetdir="build/ablcontainer/pl/" ignoreFileTimes="true">
+                <mapper type="flatten"/>
+            </different>
+          </fileset>
+        </copy>
+    </target>
+
+    <!-- report generator -->
+    <target name="coveragereport" description="Generate coverage report">
+        <coveragereport reportExecutable="tools/packages/ReportGenerator.3.1.2/tools/ReportGenerator.exe"
+                        coverageFile="build/oe11/cobertura-coverage.xml"
+                        destinationDir="build/oe11/reports" />
+        <exec executable="C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" spawn="yes" failifexecutionfails="false">
+            <arg value="build/oe11/reports/index.htm" />
+        </exec>
+    </target>
+
+    <!-- sonar -->
+    <target name="sonar" description="Sonarqube" depends="">
+
+      <sonar
+          analysisMode="preview"
+          projectName="Application"
+          projectKey="Application"
+          baseDir="."
+          versionNumber="0.1"
+
+          sources="src/"
+          oeBinaries="build/oe11/"
+          >
+
+          <preProperties/>
+          <postProperties/>
+      </sonar>
+
+    </target>
+
+</project>
