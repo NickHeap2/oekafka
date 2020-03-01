@@ -1,2 +1,2 @@
-# abl-template
-Template for ABL  projects
+# OEKafka
+OpenEdge kafka library (uses librdkafka-wrapper)
