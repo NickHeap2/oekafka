@@ -1,3 +1,4 @@
+@echo off
 set BOOTSTRAP_PROPATH=ablcontainer/ABLContainer.pl
 set OPENEDGE_ENVIRONMENT=Development
 
@@ -17,5 +18,7 @@ REM set Serilog__WriteTo__1__Args__nodeUris=http://elastic:9200
 REM set Serilog__WriteTo__1__Args__indexFormat=test-index-{0:yyyy.MM.dd}
 REM set Serilog__WriteTo__1__Args__emitEventFailure=ThrowException
 
-C:\Progress\OpenEdge\bin\_progres.exe -param "BATCH" -b -p "ablcontainer/ABLContainer.pl<<ABLContainer/start.r>>" -assemblies assemblies
+C:\Progress\OpenEdge\bin\_progres.exe -param "BATCH" -b -p src/startup.p
+REM "ablcontainer/ABLContainer.pl<<ABLContainer/start.r>>"
+REM -assemblies assemblies
 REM -clientlog D:\workspaces\oe-traceview\input.log -logentrytypes DB.Connects,4GLMessages:4,4GLTrace:4
