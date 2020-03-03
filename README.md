@@ -1,2 +1,2 @@
 # OEKafka
-OpenEdge kafka library (uses librdkafka-wrapper)
+OpenEdge Kafka library (uses librdkafka via oekafka-wrapper)
