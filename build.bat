@@ -1,0 +1,1 @@
+docker build . -t oekafka:0.1

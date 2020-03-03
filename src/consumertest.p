@@ -1,10 +1,15 @@
 USING OEKafka.* FROM PROPATH.
+// USING OpenEdge.Logging.ILogWriter.
+// USING OpenEdge.Logging.LoggerBuilder.
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
 
-DEFINE VARIABLE librdKafkaWrapper AS LibrdKafkaWrapper NO-UNDO.
+// DEFINE VARIABLE logger AS ILogWriter NO-UNDO.
+// logger = LoggerBuilder:GetLogger("Default").
 
-librdKafkaWrapper = NEW LibrdKafkaWrapper().
+DEFINE VARIABLE librdkafkaWrapper AS LibrdkafkaWrapper NO-UNDO.
+
+librdkafkaWrapper = NEW LibrdkafkaWrapper().
 
 DEFINE VARIABLE brokers  AS CHARACTER NO-UNDO.
 DEFINE VARIABLE consumer_group  AS CHARACTER NO-UNDO.
@@ -16,55 +21,57 @@ DEFINE VARIABLE timeout AS INTEGER NO-UNDO.
 DEFINE VARIABLE lastError AS CHARACTER NO-UNDO.
 DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
-brokers = "localhost:9092".
+/*PAUSE 0 BEFORE-HIDE.*/
+
+brokers = "host.docker.internal:9092".
 consumer_group = "rdkafka-consumer-group-1".
-topic = "_schemas".
-offset_reset = "earliest".
+topic = "test-topic".
+offset_reset = "latest".
 debug = "".
-timeout = 1000.
+timeout = 10000.
 
-
-MESSAGE "Setting config options...".
+RUN LogInfo(INPUT "Setting config options...").
 
 DO ON STOP UNDO, LEAVE:
   IF (DEBUG <> "") THEN DO:
-    librdKafkaWrapper:SetConfigOption("debug", debug).
+    librdkafkaWrapper:SetConfigOption("debug", debug).
   END.
 
-  librdKafkaWrapper:SetConfigOption("bootstrap.servers", brokers).
-  librdKafkaWrapper:SetConfigOption("group.id", consumer_group).
-  librdKafkaWrapper:SetConfigOption("auto.offset.reset", offset_reset).
-/*  librdKafkaWrapper:SetConfigOption("junk", "setting").*/
+  librdkafkaWrapper:SetConfigOption("bootstrap.servers", brokers).
+  librdkafkaWrapper:SetConfigOption("group.id", consumer_group).
+  librdkafkaWrapper:SetConfigOption("auto.offset.reset", offset_reset).
+/*  librdkafkaWrapper:SetConfigOption("junk", "setting").*/
 
   CATCH ae AS Progress.Lang.AppError:
-    MESSAGE ae:GetMessage(1).
+    RUN LogFatal(INPUT ae:GetMessage(1)).
     QUIT.
   END CATCH.
 
 END.
 
-MESSAGE "Creating consumer...".
-callResult = librdKafkaWrapper:CreateConsumer().
-lastError = librdKafkaWrapper:GetLastError().
+RUN LogInfo(INPUT "Creating consumer...").
+callResult = librdkafkaWrapper:CreateConsumer().
+RUN LogInfo(INPUT "Getting last error...").
+lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  MESSAGE SUBSTITUTE("Failed to create consumer with error:  &1", lastError).
+  RUN LogFatal(INPUT SUBSTITUTE("    Failed to create consumer with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  MESSAGE SUBSTITUTE("WARNING CREATE consumer returned: &1", lastError).
+  RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE consumer returned: &1", lastError)).
 END.
 
 /* subscribe to a topic */
-MESSAGE SUBSTITUTE("Subscribing to topic &1...", topic).
+RUN LogInfo(INPUT SUBSTITUTE("Subscribing to topic &1...", topic)).
 
-callResult = librdKafkaWrapper:SubscribeToTopic(topic).
-lastError = librdKafkaWrapper:GetLastError().
+callResult = librdkafkaWrapper:SubscribeToTopic(topic).
+lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  MESSAGE SUBSTITUTE("Failed to subscribe to topic with error:  &1", lastError).
+  RUN LogInfo(INPUT SUBSTITUTE("    Failed to subscribe to topic with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  MESSAGE SUBSTITUTE("WARNING subscribe to topic returned: &1", lastError).
+  RUN LogInfo(INPUT SUBSTITUTE("    WARNING subscribe to topic returned: &1", lastError)).
 END.
 
 DEFINE VARIABLE rkm AS INT64 NO-UNDO.
@@ -73,31 +80,62 @@ _GET_MESSAGES:
 DO WHILE TRUE
   ON ENDKEY UNDO, LEAVE
   ON STOP UNDO, LEAVE:
-  rkm = librdKafkaWrapper:GetMessage(timeout).
-  lastError = librdKafkaWrapper:GetLastError().
+
+  RUN LogInfo(INPUT "Getting message...").
+  rkm = librdkafkaWrapper:GetMessage(timeout).
+  lastError = librdkafkaWrapper:GetLastError().
   IF (rkm = ? OR rkm = 0) THEN DO:
-    MESSAGE "NO MESSAGE".
+    RUN LogInfo(INPUT "    No messages.").
     IF lastError <> "" THEN DO:
-      MESSAGE SUBSTITUTE("Error getting MESSAGE: &1", lastError).
+      RUN LogError(INPUT SUBSTITUTE("    Error getting MESSAGE: &1", lastError)).
     END.
 
     NEXT _GET_MESSAGES.
   END.
   ELSE DO:
-    MESSAGE "Got MESSAGE".
+    RUN LogInfo(INPUT "    Got MESSAGE").
 
     DEFINE VARIABLE kafkaMessage AS KafkaMessage NO-UNDO.
     kafkaMessage = NEW KafkaMessage(rkm).
-    librdKafkaWrapper:DestroyMessage(rkm).
+    librdkafkaWrapper:DestroyMessage(rkm).
 
-    MESSAGE SUBSTITUTE("Partition: &1: Offset: &2", kafkaMessage:partition, kafkaMessage:offset).
-    MESSAGE SUBSTITUTE("Key: &1", kafkaMessage:keyValue).
-    MESSAGE SUBSTITUTE("Payload: &1", kafkaMessage:payloadValue).
+    IF kafkaMessage:err = 1 THEN DO:
+      RUN LogError(INPUT "    Got Error!").
+      NEXT _GET_MESSAGES.
+    END.
+
+    RUN LogInfo(INPUT SUBSTITUTE("        Partition: &1: Offset: &2", kafkaMessage:partition, kafkaMessage:offset)).
+    RUN LogInfo(INPUT SUBSTITUTE("        Key: &1", kafkaMessage:keyValue)).
+    RUN LogInfo(INPUT SUBSTITUTE("        Payload: &1", kafkaMessage:payloadValue)).
   END.
 
 END.
 
-MESSAGE "Destroying consumer...".
-librdKafkaWrapper:DestroyConsumer().
+RUN LogInfo(INPUT "Destroying consumer...").
+librdkafkaWrapper:DestroyConsumer().
 
-MESSAGE "Completed!".
+RUN LogInfo(INPUT "Completed!").
+
+procedure LogInfo:
+  define input parameter msg as character no-undo.
+
+  log-manager:write-message(msg, "INFO").
+end procedure.
+
+procedure LogFatal:
+  define input parameter msg as character no-undo.
+
+  log-manager:write-message(msg, "FATAL").
+end procedure.
+
+procedure LogError:
+  define input parameter msg as character no-undo.
+
+  log-manager:write-message(msg, "ERROR").
+end procedure.
+
+procedure LogWarn:
+  define input parameter msg as character no-undo.
+
+  log-manager:write-message(msg, "WARN").
+end procedure.

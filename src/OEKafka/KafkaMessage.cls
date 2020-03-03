@@ -75,9 +75,12 @@ CONSTRUCTOR PUBLIC KafkaMessage (rkm AS INT64):
     IF GET-BYTE(ptr_key, 1) = 0 THEN DO:
       headerLength = GET-BYTE(ptr_key, 5).
       readableStart = 6 + headerLength.
+      THIS-OBJECT:keyValue = GET-STRING(ptr_key, readableStart, THIS-OBJECT:key_len - readableStart).
+    END.
+    ELSE DO:
+      THIS-OBJECT:keyValue = GET-STRING(ptr_key, 1, THIS-OBJECT:key_len).
     END.
 
-    THIS-OBJECT:keyValue = GET-STRING(ptr_key, readableStart, THIS-OBJECT:key_len - readableStart).
     SET-POINTER-VALUE(ptr_key) = 0.
   END.
 
@@ -91,9 +94,12 @@ CONSTRUCTOR PUBLIC KafkaMessage (rkm AS INT64):
     IF GET-BYTE(ptr_payload, 1) = 0 THEN DO:
       headerLength = GET-BYTE(ptr_payload, 5).
       readableStart = 6 + headerLength.
+      THIS-OBJECT:payloadValue = GET-STRING(ptr_payload, readableStart, THIS-OBJECT:len - readableStart).
+    END.
+    ELSE DO:
+      THIS-OBJECT:payloadValue = GET-STRING(ptr_payload, 1, THIS-OBJECT:len).
     END.
 
-    THIS-OBJECT:payloadValue = GET-STRING(ptr_payload, readableStart, THIS-OBJECT:len - readableStart).
     SET-POINTER-VALUE(ptr_payload) = 0.
   END.
 
