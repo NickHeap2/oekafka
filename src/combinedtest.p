@@ -1,11 +1,6 @@
 USING OEKafka.* FROM PROPATH.
-// USING OpenEdge.Logging.ILogWriter.
-// USING OpenEdge.Logging.LoggerBuilder.
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
-
-// DEFINE VARIABLE logger AS ILogWriter NO-UNDO.
-// logger = LoggerBuilder:GetLogger("Default").
 
 DEFINE VARIABLE librdkafkaWrapper AS LibrdkafkaWrapper NO-UNDO.
 
@@ -123,7 +118,7 @@ DO WHILE TRUE
 
   // PAUSE 4 NO-MESSAGE.
 
-  RUN LogInfo(INPUT SUBSTITUTE("Producing message key [&1]...", key)).
+  // RUN LogInfo(INPUT SUBSTITUTE("Producing message key [&1]...", key)).
   callResult = librdkafkaWrapper:ProduceMessage(topic, key, payload).
   lastError = librdkafkaWrapper:GetLastError().
   IF callResult <> 0 THEN DO:
@@ -132,9 +127,7 @@ DO WHILE TRUE
   ELSE IF lastError <> "" THEN DO:
     RUN LogError(INPUT SUBSTITUTE("    Error producing message: &1", lastError)).
   END.
-  // RUN LogInfo(INPUT "    Message sent.").
 
-  // RUN LogInfo(INPUT "Getting message...").
   rkm = librdkafkaWrapper:GetMessage(timeout).
   lastError = librdkafkaWrapper:GetLastError().
   IF (rkm = ? OR rkm = 0) THEN DO:
@@ -146,8 +139,6 @@ DO WHILE TRUE
     NEXT _GET_MESSAGES.
   END.
   ELSE DO:
-    // RUN LogInfo(INPUT "    Got MESSAGE").
-
     DEFINE VARIABLE kafkaMessage AS KafkaMessage NO-UNDO.
     kafkaMessage = NEW KafkaMessage(rkm).
     librdkafkaWrapper:DestroyMessage(rkm).
@@ -157,10 +148,7 @@ DO WHILE TRUE
       NEXT _GET_MESSAGES.
     END.
 
-    // RUN LogInfo(INPUT SUBSTITUTE("        Partition: [&1]: Offset: [&2]", kafkaMessage:partition, kafkaMessage:offset)).
-    // RUN LogInfo(INPUT SUBSTITUTE("        Key: [&1]", kafkaMessage:keyValue)).
-    // RUN LogInfo(INPUT SUBSTITUTE("        Payload: [&1]", kafkaMessage:payloadValue)).
-    RUN LogInfo(INPUT SUBSTITUTE("Consumer got Message -> Partition: [&1]: Offset: [&2] Key: [&3] Payload: [&4]", kafkaMessage:partition, kafkaMessage:offset, kafkaMessage:keyValue, kafkaMessage:payloadValue)).
+    // RUN LogInfo(INPUT SUBSTITUTE("Consumer got Message -> Partition: [&1]: Offset: [&2] Key: [&3] Payload: [&4]", kafkaMessage:partition, kafkaMessage:offset, kafkaMessage:keyValue, kafkaMessage:payloadValue)).
   END.
 
 /*  PAUSE 1.*/

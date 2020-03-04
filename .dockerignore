@@ -11,3 +11,5 @@
 !*.so.1
 !*.cer
 !logging.config
+!test
+!_progres

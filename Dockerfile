@@ -1,30 +1,25 @@
 #FROM repo/wincore-oe:0.1
 FROM oe117-mpro:0.1
 
-RUN yum install -y openssl && \
-    yum clean all && \
-    rm -rf /var/cache/yum
+# new oe executable
+COPY _progres /usr/dlc/bin/
 
-#RUN yum install -y librdkafka-devel && \
-#RUN yum install -y cyrus-sasl-lib && \
-#    yum clean all && \
-#    rm -rf /var/cache/yum && \
-#    ln -s /lib64/libsasl2.so.3 /lib64/libsasl2.so.2
-#libssl.so.1.0.0
-
-#COPY build/assemblies/ assemblies/
-
-COPY liboekafka-wrapper.so /usr/dlc/lib/
-COPY centos7-librdkafka.so /usr/dlc/lib/librdkafka.so
+# kafka libraries
+COPY liboekafka-wrapper.so.1 /usr/dlc/lib/
 COPY centos7-librdkafka.so /usr/dlc/lib/librdkafka.so.1
+# make links
+RUN ln -s /usr/dlc/lib/liboekafka-wrapper.so.1 /usr/dlc/lib/liboekafka-wrapper.so && \
+ ln -s /usr/dlc/lib/librdkafka.so.1 /usr/dlc/lib/librdkafka.so
 
-ENV LD_LIBRARY_PATH=/usr/dlc/lib/
-COPY *-test /var/lib/openedge/code/
+# app code
+#COPY src/ /var/lib/openedge/code/
+COPY buil/oe11/pl/ /var/lib/openedge/code/
 
+ENV PROPATH="/var/lib/openedge/code/app.pl:/var/lib/openedge/code/:/var/lib/openedge/base/"
 
-COPY src/ /var/lib/openedge/code/
-
-ENV MPRO_STARTUP=" -b -p combinedtest.p" \
-    display_banner=no
-
-COPY logging.config /var/lib/openedge/code/
+## testing
+#ENV LD_LIBRARY_PATH=/usr/dlc/lib/
+#COPY *-test /var/lib/openedge/code/
+#COPY qa-dhlparcel-co-uk.cer /var/lib/openedge/code/
+#COPY test /var/lib/openedge/code/
+#COPY logging.config /var/lib/openedge/code/

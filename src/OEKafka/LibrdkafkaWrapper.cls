@@ -9,7 +9,7 @@ CLASS OEKafka.LibrdkafkaWrapper:
 
   // DEFINE VARIABLE logger AS ILogWriter NO-UNDO.
 
-&SCOPED-DEFINE librdkafka-wrapper "liboekafka-wrapper.so" PERSISTENT CDECL
+&SCOPED-DEFINE librdkafka-wrapper "liboekafka-wrapper.so.1" PERSISTENT CDECL
 /*CDECL*/
 /*
 PROCEDURE SetDllDirectoryA EXTERNAL "kernel32":
