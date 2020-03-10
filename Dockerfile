@@ -1,8 +1,10 @@
 #FROM repo/wincore-oe:0.1
 FROM oe117-mpro:0.1
 
-# new oe executable
-COPY _progres /usr/dlc/bin/
+# libssl dependency
+RUN yum install -y openssl && \
+    yum clean all && \
+    rm -rf /var/cache/yum
 
 # kafka libraries
 COPY liboekafka-wrapper.so.1 /usr/dlc/lib/
@@ -11,9 +13,6 @@ COPY centos7-librdkafka.so /usr/dlc/lib/librdkafka.so.1
 RUN ln -s /usr/dlc/lib/liboekafka-wrapper.so.1 /usr/dlc/lib/liboekafka-wrapper.so && \
  ln -s /usr/dlc/lib/librdkafka.so.1 /usr/dlc/lib/librdkafka.so
 
-# app code
-#COPY src/ /var/lib/openedge/code/
-COPY buil/oe11/pl/ /var/lib/openedge/code/
 
 ENV PROPATH="/var/lib/openedge/code/app.pl:/var/lib/openedge/code/:/var/lib/openedge/base/"
 
@@ -23,3 +22,6 @@ ENV PROPATH="/var/lib/openedge/code/app.pl:/var/lib/openedge/code/:/var/lib/open
 #COPY qa-dhlparcel-co-uk.cer /var/lib/openedge/code/
 #COPY test /var/lib/openedge/code/
 #COPY logging.config /var/lib/openedge/code/
+# app code
+#COPY src/ /var/lib/openedge/code/
+COPY build/oe11/pl/app.pl /var/lib/openedge/code/
