@@ -1,11 +1,11 @@
 USING OEKafka.* FROM PROPATH.
-// USING OpenEdge.Logging.ILogWriter.
-// USING OpenEdge.Logging.LoggerBuilder.
+/* USING OpenEdge.Logging.ILogWriter. */
+/* USING OpenEdge.Logging.LoggerBuilder. */
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
 
-// DEFINE VARIABLE logger AS ILogWriter NO-UNDO.
-// logger = LoggerBuilder:GetLogger("Default").
+/* DEFINE VARIABLE logger AS ILogWriter NO-UNDO. */
+/* logger = LoggerBuilder:GetLogger("Default"). */
 
 DEFINE VARIABLE librdkafkaWrapper AS LibrdkafkaWrapper NO-UNDO.
 

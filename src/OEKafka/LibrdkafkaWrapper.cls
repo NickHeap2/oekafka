@@ -1,13 +1,13 @@
 USING Progress.Lang.*.
-// USING OpenEdge.Logging.ILogWriter.
-// USING OpenEdge.Logging.LoggerBuilder.
+/* USING OpenEdge.Logging.ILogWriter. */
+/* USING OpenEdge.Logging.LoggerBuilder. */
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
 
 
 CLASS OEKafka.LibrdkafkaWrapper:
 
-  // DEFINE VARIABLE logger AS ILogWriter NO-UNDO.
+  /* DEFINE VARIABLE logger AS ILogWriter NO-UNDO. */
 
 &SCOPED-DEFINE librdkafka-wrapper "liboekafka-wrapper.so.1" PERSISTENT CDECL
 /*CDECL*/
@@ -63,8 +63,56 @@ END PROCEDURE.
 PROCEDURE wrapper_destroy_producer EXTERNAL {&librdkafka-wrapper}:
 END PROCEDURE.
 
+/* serdes */
+PROCEDURE wrapper_create_serdes EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER registryurl AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_add_to_serdes_config EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER configname AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER configvalue AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_register_value_schema EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER value_schema_name AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER value_schema_definition AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_register_key_schema EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER key_schema_name AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER key_schema_definition AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_register_offset_schema EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER offset_schema_name AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER offset_schema_definition AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_create_avro_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_add_value_to_message_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER field_value AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_get_value_from_message_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_destroy_avro_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_destroy_serdes EXTERNAL {&librdkafka-wrapper}:
+END.
+PROCEDURE wrapper_serialiase_and_send_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
 CONSTRUCTOR PUBLIC LibrdkafkaWrapper():
-  // logger = LoggerBuilder:GetLogger("Default").
+  /* logger = LoggerBuilder:GetLogger("Default"). */
 
   /*MESSAGE "Checking processor architecture...".
   IF PROCESS-ARCHITECTURE = 64 THEN DO:
@@ -187,5 +235,112 @@ METHOD INTEGER SubscribeToTopic(TOPIC AS CHARACTER):
 
 END METHOD.
 
-END CLASS.
+/* serdes */
+METHOD INTEGER CreateSerdes(schemaRegistryUrl AS CHARACTER):
 
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_create_serdes
+    (INPUT schemaRegistryUrl,
+     OUTPUT callResult).
+  RETURN callResult.
+
+END METHOD.
+
+METHOD VOID DestroySerdes():
+
+  RUN wrapper_destroy_serdes.
+
+END METHOD.
+
+METHOD INTEGER SetSerdesConfigOption(configname AS CHARACTER, configvalue AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_add_to_serdes_config
+    (INPUT configname,
+     INPUT configvalue,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER RegisterSchema(schemaType AS CHARACTER, schemaName AS CHARACTER, schemaDefinition AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  IF schemaType = "Key" THEN DO:
+    RUN wrapper_register_key_schema
+      (INPUT schemaName,
+       INPUT schemaDefinition,
+       OUTPUT callResult).
+    RETURN callResult.
+  END.
+  IF schemaType = "Value" THEN DO:
+    RUN wrapper_register_value_schema
+      (INPUT schemaName,
+       INPUT schemaDefinition,
+       OUTPUT callResult).
+    RETURN callResult.
+  END.
+  IF schemaType = "Offset" THEN DO:
+    RUN wrapper_register_offset_schema
+      (INPUT schemaName,
+       INPUT schemaDefinition,
+       OUTPUT callResult).
+    RETURN callResult.
+  END.
+
+END METHOD.
+
+METHOD INTEGER CreateAvroMessage():
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_create_avro_message
+    (OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER AddValueToMessageString(fieldName AS CHARACTER, fieldValue AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_add_value_to_message_string
+    (INPUT fieldName,
+     INPUT fieldValue,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER GetValueFromMessageString(fieldName AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_get_value_from_message_string
+    (INPUT fieldName,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER DestroyAvroMessage():
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_destroy_avro_message
+    (OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER SerialiseAndSendMessage(topic AS CHARACTER, key AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_serialiase_and_send_message
+    (INPUT topic,
+     INPUT key,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+
+END CLASS.

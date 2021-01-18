@@ -116,9 +116,9 @@ DO WHILE TRUE
   key = SUBSTITUTE("OEKEY_&1", messageCounter).
   payload = SUBSTITUTE("OEPAYLOAD_&1", messageCounter).
 
-  // PAUSE 4 NO-MESSAGE.
+  /* PAUSE 4 NO-MESSAGE. */
 
-  // RUN LogInfo(INPUT SUBSTITUTE("Producing message key [&1]...", key)).
+  /* RUN LogInfo(INPUT SUBSTITUTE("Producing message key [&1]...", key)). */
   callResult = librdkafkaWrapper:ProduceMessage(topic, key, payload).
   lastError = librdkafkaWrapper:GetLastError().
   IF callResult <> 0 THEN DO:
@@ -148,7 +148,7 @@ DO WHILE TRUE
       NEXT _GET_MESSAGES.
     END.
 
-    // RUN LogInfo(INPUT SUBSTITUTE("Consumer got Message -> Partition: [&1]: Offset: [&2] Key: [&3] Payload: [&4]", kafkaMessage:partition, kafkaMessage:offset, kafkaMessage:keyValue, kafkaMessage:payloadValue)).
+    /* RUN LogInfo(INPUT SUBSTITUTE("Consumer got Message -> Partition: [&1]: Offset: [&2] Key: [&3] Payload: [&4]", kafkaMessage:partition, kafkaMessage:offset, kafkaMessage:keyValue, kafkaMessage:payloadValue)). */
   END.
 
 /*  PAUSE 1.*/

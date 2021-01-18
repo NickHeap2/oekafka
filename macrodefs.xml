@@ -49,6 +49,7 @@
 <macrodef name="getoelocations">
     <attribute name="isWindows" default="isWindows"/>
     <attribute name="isUnix" default="isUnix"/>
+    <attribute name="dlc12" default="env.OEDLC12"/>
     <attribute name="dlc11" default="env.OEDLC11"/>
     <attribute name="dlc10" default="env.OEDLC10"/>
     <attribute name="dlc10-64" default="env.OEDLC10-64"/>
@@ -56,29 +57,42 @@
    <sequential>
         <!-- set oe11 location -->
         <!-- unix -->
-        <condition property="@{dlc11}" value="/usr/dlc">
+        <condition property="@{dlc12}" value="/usr/dlc">
             <and>
                 <isset property="@{isUnix}"/>
                 <available file="/usr/dlc" type="dir"/>
             </and>
         </condition>
-        <!-- windows -->
-        <condition property="@{dlc11}" value="C:\\Progress\\OpenEdge">
+        <condition property="@{dlc12}" value="C:\\Progress\\OpenEdge">
             <and>
                 <isset property="@{isWindows}"/>
                 <available file="C:\\Progress\\OpenEdge" type="dir"/>
             </and>
         </condition>
-        <condition property="@{dlc11}" value="C:\\Progressx86\\OpenEdge">
+        <condition property="@{dlc12}" value="C:\\Progressx86\\OpenEdge">
             <and>
                 <isset property="@{isWindows}"/>
                 <available file="C:\\Progressx86\\OpenEdge" type="dir"/>
             </and>
         </condition>
+        <!-- set oe11 location -->
+        <!-- windows -->
         <condition property="@{dlc11}" value="c:\\oe11">
             <and>
                 <isset property="@{isWindows}"/>
                 <available file="c:\\oe11" type="dir"/>
+            </and>
+        </condition>
+        <condition property="@{dlc11}" value="D:\\FromC\\DLC115">
+            <and>
+                <isset property="@{isWindows}"/>
+                <available file="D:\\FromC\\DLC115" type="dir"/>
+            </and>
+        </condition>
+        <condition property="@{dlc11}" value="C:\\DLC115">
+            <and>
+                <isset property="@{isWindows}"/>
+                <available file="C:\\DLC115" type="dir"/>
             </and>
         </condition>
 

@@ -1,0 +1,9 @@
+USING Progress.Lang.*.
+
+BLOCK-LEVEL ON ERROR UNDO, THROW.
+
+CLASS OEKafka.AvroMessage:
+  CONSTRUCTOR PUBLIC AvroMessage (rkm AS INT64):
+
+  END CONSTRUCTOR.
+END CLASS.

@@ -4,12 +4,13 @@
 !build/assemblies/**/*
 !build/static/**/*
 !src/**/*
-!*.so
+!*.so*
 !consumer-test
 !producer-test
 !combined-test
 !*.so.1
 !*.cer
+!*Schema.json
 !logging.config
 !test
 !_progres
