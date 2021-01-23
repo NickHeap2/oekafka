@@ -64,8 +64,11 @@ PROCEDURE wrapper_destroy_producer EXTERNAL {&librdkafka-wrapper}:
 END PROCEDURE.
 
 /* serdes */
-PROCEDURE wrapper_create_serdes EXTERNAL {&librdkafka-wrapper}:
+PROCEDURE wrapper_create_serdes_conf EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER registryurl AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_create_serdes EXTERNAL {&librdkafka-wrapper}:
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 PROCEDURE wrapper_add_to_serdes_config EXTERNAL {&librdkafka-wrapper}:
@@ -110,6 +113,68 @@ PROCEDURE wrapper_serialiase_and_send_message EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
+
+PROCEDURE wrapper_deserialiase_message_key EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER rkm AS INT64 NO-UNDO.
+  DEFINE OUTPUT PARAMETER avro_value AS INT64 NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
+PROCEDURE wrapper_deserialiase_message_value EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER rkm AS INT64 NO-UNDO.
+  DEFINE OUTPUT PARAMETER avro_value AS INT64 NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
+PROCEDURE wrapper_destroy_avro_value EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER avro_value AS INT64 NO-UNDO.
+END.
+
+PROCEDURE wrapper_get_avro_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER avro_value AS INT64 NO-UNDO.
+  DEFINE OUTPUT PARAMETER key_string AS CHARACTER NO-UNDO.
+  DEFINE OUTPUT PARAMETER key_size AS LONG NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
+PROCEDURE wrapper_get_value_field EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER avro_source AS INT64 NO-UNDO.
+  DEFINE OUTPUT PARAMETER avro_value AS INT64 NO-UNDO.
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
+PROCEDURE wrapper_extract_key_and_value EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER rkm AS INT64 NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+
+PROCEDURE wrapper_get_key EXTERNAL {&librdkafka-wrapper}:
+  DEFINE OUTPUT PARAMETER key_value AS CHARACTER NO-UNDO.
+END.
+
+PROCEDURE wrapper_get_value_field_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE OUTPUT PARAMETER field_value AS CHARACTER NO-UNDO.
+END.
+
+PROCEDURE wrapper_clear_values EXTERNAL {&librdkafka-wrapper}:
+END.
+
+/*
+int wrapper_extract_key_and_value(rd_kafka_message_t* rkm);
+char* wrapper_get_key();
+char* wrapper_get_value_field_string(char* field_name);
+void wrapper_clear_values();
+*/
+/*
+int wrapper_deserialiase_message_key(rd_kafka_message_t* rkm, avro_value_t* avro);
+int wrapper_deserialiase_message_value(rd_kafka_message_t* rkm, avro_value_t* avro);
+void wrapper_destroy_avro_value(avro_value_t* avro);
+void wrapper_get_avro_string(avro_value_t* avro_value, const char** string, size_t size);
+int wrapper_get_value_field(avro_value_t* avro_source, avro_value_t* avro_field, char* field_name);
+*/
+
 
 CONSTRUCTOR PUBLIC LibrdkafkaWrapper():
   /* logger = LoggerBuilder:GetLogger("Default"). */
@@ -236,13 +301,23 @@ METHOD INTEGER SubscribeToTopic(TOPIC AS CHARACTER):
 END METHOD.
 
 /* serdes */
-METHOD INTEGER CreateSerdes(schemaRegistryUrl AS CHARACTER):
+METHOD INTEGER CreateSerdesConf(schemaRegistryUrl AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_create_serdes_conf
+    (INPUT schemaRegistryUrl,
+     OUTPUT callResult).
+  RETURN callResult.
+
+END METHOD.
+
+METHOD INTEGER CreateSerdes():
 
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
   RUN wrapper_create_serdes
-    (INPUT schemaRegistryUrl,
-     OUTPUT callResult).
+    (OUTPUT callResult).
   RETURN callResult.
 
 END METHOD.
@@ -342,5 +417,135 @@ METHOD INTEGER SerialiseAndSendMessage(topic AS CHARACTER, key AS CHARACTER):
   RETURN callResult.
 END METHOD.
 
+METHOD CHARACTER GetMessageKey(rkm AS INT64):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+  DEFINE VARIABLE avro_key AS INT64 NO-UNDO.
+
+  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Calling wrapper_deserialiase_message_key"), "INFO").
+  RUN wrapper_deserialiase_message_key
+    (INPUT rkm,
+     OUTPUT avro_key,
+     OUTPUT callResult).
+  IF callResult <> 0 THEN DO:
+    RETURN ?.
+  END.
+
+  /*message avro_key.*/
+  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        avro_key = [&1]", avro_key), "INFO").
+
+  /*DEFINE VARIABLE key_memptr AS MEMPTR NO-UNDO.*/
+  DEFINE VARIABLE avro_value AS INT64 NO-UNDO.
+  DEFINE VARIABLE key_string AS CHARACTER NO-UNDO.
+  DEFINE VARIABLE key_size AS INTEGER NO-UNDO.
+  
+  key_string = FILL(" ", 1000).
+
+  /*SET-POINTER-VALUE(key_memptr) = key_string.*/
+
+  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Calling wrapper_get_avro_string"), "INFO").
+  RUN wrapper_get_avro_string
+    (INPUT avro_key,
+     OUTPUT  key_string,
+     OUTPUT  key_size,
+     OUTPUT callResult).
+  IF callResult <> 0 THEN DO:
+    RETURN ?.
+  END.
+
+  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Back from wrapper_get_avro_string"), "INFO").
+  
+
+  /*PROCEDURE wrapper_get_avro_string EXTERNAL {&librdkafka-wrapper}:
+    DEFINE INPUT  PARAMETER avro_value AS INT64 NO-UNDO.
+    DEFINE INPUT  PARAMETER key_string AS INT64 NO-UNDO.
+    DEFINE INPUT  PARAMETER key_size AS INT64 NO-UNDO.
+    DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+  END.
+  
+  PROCEDURE wrapper_get_value_field EXTERNAL {&librdkafka-wrapper}:
+    DEFINE INPUT  PARAMETER avro_source AS INT64 NO-UNDO.
+    DEFINE INPUT  PARAMETER avro_value AS INT64 NO-UNDO.
+    DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+    DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+  END.*/
+
+
+  /*RUN wrapper_serialiase_and_send_message
+  (INPUT topic,
+   INPUT key,
+   OUTPUT callResult).
+RETURN callResult.*/
+END METHOD.
+
+METHOD INTEGER ExtractKeyAndValue(rkm AS INT64):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_extract_key_and_value
+    (INPUT rkm,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD CHARACTER GetKey():
+  
+  DEFINE VARIABLE key_value AS CHARACTER NO-UNDO.
+/*  DEFINE VARIABLE p_char AS INT64 NO-UNDO.*/
+/*  DEFINE VARIABLE p_key_value AS MEMPTR NO-UNDO.*/
+
+  key_value = FILL(" ", 1000).
+
+  RUN wrapper_get_key
+    (OUTPUT key_value).
+/*  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Back from wrapper_get_key with &1 ", key_value), "INFO").*/
+
+/*  SET-SIZE(p_key_value) = 1000.          */
+/*  RUN wrapper_get_key                    */
+/*    (OUTPUT p_key_value).                */
+/*  key_value = GET-STRING(p_key_value, 1).*/
+/*  SET-SIZE(p_key_value) = 0.             */
+
+/*  RUN wrapper_get_key                                                                                 */
+/*    (OUTPUT p_char).                                                                                  */
+/*  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Back from wrapper_get_key with &1 ", p_char), "INFO").*/
+/*                                                                                                      */
+/*  SET-POINTER-VALUE(p_key_value) = p_char.                                                            */
+/*  key_value = GET-STRING(p_key_value, 1).                                                             */
+/*  SET-POINTER-VALUE(p_key_value) = 0.                                                                 */
+
+  RETURN key_value.
+END METHOD.
+
+METHOD CHARACTER GetValueFieldString(fieldName AS CHARACTER):
+  
+  DEFINE VARIABLE field_value AS CHARACTER NO-UNDO.
+/*  DEFINE VARIABLE p_char AS INT64 NO-UNDO.*/
+/*  DEFINE VARIABLE p_field_value AS MEMPTR NO-UNDO.*/
+
+  field_value = FILL(" ", 31991).
+
+  RUN wrapper_get_value_field_string
+    (INPUT fieldName,
+     OUTPUT field_value).
+/*  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Back from wrapper_get_key with &1 ", field_value), "INFO").*/
+
+/*  RUN wrapper_get_key      */
+/*    (INPUT fieldName,      */
+/*     OUTPUT p_field_value).*/
+
+/*  RUN wrapper_get_key                        */
+/*    (INPUT fieldName,                        */
+/*     OUTPUT p_char).                         */
+/*  SET-POINTER-VALUE(p_field_value) = p_char. */
+/*  field_value = GET-STRING(p_field_value, 1).*/
+/*  SET-POINTER-VALUE(p_field_value) = 0.      */
+
+  RETURN field_value.
+END METHOD.
+
+METHOD INTEGER ClearValues():
+  RUN wrapper_clear_values.
+END METHOD.
 
 END CLASS.

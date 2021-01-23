@@ -63,6 +63,22 @@ END.
 
 /* create serdes instance*/
 RUN LogInfo(INPUT "Creating serdes...").
+
+callResult = librdkafkaWrapper:CreateSerdesConf("http://localhost:8081").
+RUN LogInfo(INPUT "  Getting last error...").
+lastError = librdkafkaWrapper:GetLastError().
+IF callResult <> 0 THEN DO:
+  RUN LogFatal(INPUT SUBSTITUTE("    Failed to create serdes conf with error:  &1", lastError)).
+  QUIT.
+END.
+IF lastError <> "" THEN DO:
+  RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE serdes conf returned: &1", lastError)).
+END.
+
+/* set debug value */
+librdkafkaWrapper:SetSerdesConfigOption("debug", "all").
+
+callResult = librdkafkaWrapper:CreateSerdes().
 RUN LogInfo(INPUT "  Getting last error...").
 lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
@@ -72,7 +88,6 @@ END.
 IF lastError <> "" THEN DO:
   RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE serdes returned: &1", lastError)).
 END.
-/*SetSerdesConfigOption("name", "value").*/
 
 /* register schemas */
  
@@ -177,6 +192,9 @@ DO WHILE TRUE
 
   /*PAUSE 0.01.*/
 END.
+
+RUN LogInfo(INPUT "Destroying serdes...").
+librdkafkaWrapper:DestroySerdes().
 
 RUN LogInfo(INPUT "Destroying producer...").
 librdkafkaWrapper:DestroyProducer().
