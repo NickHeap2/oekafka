@@ -23,6 +23,7 @@
     <path id="propath_app">
         <pathelement path="src"/>
         <pathelement path="ablcontainer/ABLContainer.pl"/>
+        <pathelement path="ablcontainer/OpenEdge.Core.pl"/>
     </path>
 
     <!-- propath set tests -->
@@ -31,6 +32,7 @@
         <pathelement path="tests"/>
         <pathelement path="src"/>
         <pathelement path="ablcontainer/ABLContainer.pl"/>
+        <pathelement path="ablcontainer/OpenEdge.Core.pl"/>
     </path>
 
     <!-- compile files set -->

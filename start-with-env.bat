@@ -1,5 +1,5 @@
 @echo off
-set BOOTSTRAP_PROPATH=ablcontainer/ABLContainer.pl
+set BOOTSTRAP_PROPATH=ablcontainer/ABLContainer.pl,ablcontainer/OpenEdge.Core.pl
 set OPENEDGE_ENVIRONMENT=Development
 
 set OpenEdge__databases__0__db=

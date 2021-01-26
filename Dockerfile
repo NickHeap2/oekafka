@@ -18,8 +18,8 @@ RUN ln -s /usr/dlc/lib/liboekafka-wrapper.so.1 /usr/dlc/lib/liboekafka-wrapper.s
 # ln -s /usr/dlc/lib/librdkafka.so.1 /usr/dlc/lib/librdkafka.so
 # ln -s /lib64/librdkafka.so.1 /usr/dlc/lib/librdkafka.so
 
+ENV PROPATH=""
 
-ENV PROPATH="/var/lib/openedge/code/app.pl:/var/lib/openedge/code/:/var/lib/openedge/base/"
 
 ## testing
 #ENV LD_LIBRARY_PATH=/usr/dlc/lib/
@@ -31,7 +31,10 @@ ENV PROPATH="/var/lib/openedge/code/app.pl:/var/lib/openedge/code/:/var/lib/open
 # app code
 #COPY src/ /var/lib/openedge/code/
 COPY build/oe11/pl/app.pl /var/lib/openedge/code/
+COPY ablcontainer/* /var/lib/openedge/code/ablcontainer/
 
 #RUN yum install -y librdkafka
 
 COPY producer-test consumer-test combined-test /var/lib/openedge/code/
+ENV MPRO_STARTUP=' -param "BATCH" -b -p ablcontainer/start.r -rereadnolock'
+ENV BOOTSTRAP_PROPATH="ablcontainer/ABLContainer.pl,ablcontainer/OpenEdge.Core.pl"

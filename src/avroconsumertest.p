@@ -1,4 +1,5 @@
 USING OEKafka.* FROM PROPATH.
+USING ABLContainer.Logging.* FROM PROPATH.
 /* USING OpenEdge.Logging.ILogWriter. */
 /* USING OpenEdge.Logging.LoggerBuilder. */
 
@@ -28,7 +29,7 @@ topic = "test-topic-2".
 debug = "".
 timeout = 10000.
 
-RUN LogInfo(INPUT "Setting config options...").
+Log:Information( "Setting config options...").
 
 DO ON STOP UNDO, LEAVE:
   IF (DEBUG <> "") THEN DO:
@@ -46,97 +47,101 @@ DO ON STOP UNDO, LEAVE:
 
 END.
 
-RUN LogInfo(INPUT "Creating consumer...").
+Log:Information("Creating consumer...").
 callResult = librdkafkaWrapper:CreateConsumer().
-RUN LogInfo(INPUT "Getting last error...").
+Log:Information("Getting last error...").
 lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  RUN LogFatal(INPUT SUBSTITUTE("    Failed to create consumer with error:  &1", lastError)).
+  Log:Error(SUBSTITUTE("    Failed to create consumer with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE consumer returned: &1", lastError)).
+  Log:Warning(SUBSTITUTE("    WARNING CREATE consumer returned: &1", lastError)).
 END.
 
 /* subscribe to a topic */
-RUN LogInfo(INPUT SUBSTITUTE("Subscribing to topic &1...", topic)).
+Log:Information(SUBSTITUTE("Subscribing to topic &1...", topic)).
 
 callResult = librdkafkaWrapper:SubscribeToTopic(topic).
 lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  RUN LogInfo(INPUT SUBSTITUTE("    Failed to subscribe to topic with error:  &1", lastError)).
+  Log:Error(SUBSTITUTE("    Failed to subscribe to topic with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  RUN LogInfo(INPUT SUBSTITUTE("    WARNING subscribe to topic returned: &1", lastError)).
+  Log:Warning(SUBSTITUTE("    WARNING subscribe to topic returned: &1", lastError)).
 END.
 
 
 
 /* create serdes conf*/
-RUN LogInfo(INPUT "Creating serdes conf...").
+Log:Information("Creating serdes conf...").
 
 callResult = librdkafkaWrapper:CreateSerdesConf("http://localhost:8081").
-RUN LogInfo(INPUT "  Getting last error...").
+Log:Information("  Getting last error...").
 lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  RUN LogFatal(INPUT SUBSTITUTE("    Failed to create serdes conf with error:  &1", lastError)).
+  Log:Error(SUBSTITUTE("    Failed to create serdes conf with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE serdes conf returned: &1", lastError)).
+  Log:Warning(SUBSTITUTE("    WARNING CREATE serdes conf returned: &1", lastError)).
 END.
 
 /* set debug value */
 librdkafkaWrapper:SetSerdesConfigOption("debug", "all").
 
 /* create serdes conf*/
-RUN LogInfo(INPUT "Creating serdes instance...").
+Log:Information("Creating serdes instance...").
 
 callResult = librdkafkaWrapper:CreateSerdes().
-RUN LogInfo(INPUT "  Getting last error...").
+Log:Information("  Getting last error...").
 lastError = librdkafkaWrapper:GetLastError().
 IF callResult <> 0 THEN DO:
-  RUN LogFatal(INPUT SUBSTITUTE("    Failed to create serdes with error:  &1", lastError)).
+  Log:Error(SUBSTITUTE("    Failed to create serdes with error:  &1", lastError)).
   QUIT.
 END.
 IF lastError <> "" THEN DO:
-  RUN LogWarn(INPUT SUBSTITUTE("    WARNING CREATE serdes returned: &1", lastError)).
+  Log:Warning(SUBSTITUTE("    WARNING CREATE serdes returned: &1", lastError)).
 END.
 
 
 DEFINE VARIABLE rkm AS INT64 NO-UNDO.
 
+DEFINE VARIABLE consumerNumMessage AS INTEGER NO-UNDO.
+
+consumerNumMessage = 0.
 _GET_MESSAGES:
-DO WHILE TRUE
+DO WHILE consumerNumMessage < 100
   ON ENDKEY UNDO, LEAVE
   ON STOP UNDO, LEAVE:
+  consumerNumMessage = consumerNumMessage + 1.
 
-  RUN LogInfo(INPUT "Getting message...").
+  Log:Information("Getting message...").
   rkm = librdkafkaWrapper:GetMessage(timeout).
   lastError = librdkafkaWrapper:GetLastError().
   IF (rkm = ? OR rkm = 0) THEN DO:
-    RUN LogInfo(INPUT "    No messages.").
+    Log:Information("    No messages.").
     IF lastError <> "" THEN DO:
-      RUN LogError(INPUT SUBSTITUTE("    Error getting MESSAGE: &1", lastError)).
+      Log:Error(SUBSTITUTE("    Error getting MESSAGE: &1", lastError)).
     END.
 
     NEXT _GET_MESSAGES.
   END.
   ELSE DO:
-    RUN LogInfo(INPUT "    Got MESSAGE").
+    Log:Information("    Got MESSAGE").
 
     DEFINE VARIABLE avroMessage AS AvroMessage NO-UNDO.
     avroMessage = NEW AvroMessage(librdkafkaWrapper, rkm).
 
     IF avroMessage:err = 1 THEN DO:
-      RUN LogError(INPUT "    Got Error!").
+      Log:Error("    Got Error!").
       NEXT _GET_MESSAGES.
     END.
 
-    RUN LogInfo(INPUT SUBSTITUTE("        Partition: &1: Offset: &2", avroMessage:partition, avroMessage:offset)).
-    RUN LogInfo(INPUT SUBSTITUTE("        Key: &1", avroMessage:keyValue)).
-    RUN LogInfo(INPUT SUBSTITUTE("        Payload: &1", avroMessage:payloadValue)).
+    Log:Information(SUBSTITUTE("        Partition: &1: Offset: &2", avroMessage:partition, avroMessage:offset)).
+    Log:Information(SUBSTITUTE("        Key: &1", avroMessage:keyValue)).
+    Log:Information(SUBSTITUTE("        Payload: &1", avroMessage:payloadValue)).
 
     DELETE OBJECT avroMessage.
 
@@ -144,34 +149,10 @@ DO WHILE TRUE
 
 END.
 
-RUN LogInfo(INPUT "Destroying serdes...").
+Log:Information("Destroying serdes...").
 librdkafkaWrapper:DestroySerdes().
 
-RUN LogInfo(INPUT "Destroying consumer...").
+Log:Information("Destroying consumer...").
 librdkafkaWrapper:DestroyConsumer().
 
-RUN LogInfo(INPUT "Completed!").
-
-PROCEDURE LogInfo:
-  DEFINE INPUT PARAMETER msg AS CHARACTER NO-UNDO.
-
-  LOG-MANAGER:WRITE-MESSAGE(msg, "INFO").
-END PROCEDURE.
-
-PROCEDURE LogFatal:
-  DEFINE INPUT PARAMETER msg AS CHARACTER NO-UNDO.
-
-  LOG-MANAGER:WRITE-MESSAGE(msg, "FATAL").
-END PROCEDURE.
-
-PROCEDURE LogError:
-  DEFINE INPUT PARAMETER msg AS CHARACTER NO-UNDO.
-
-  LOG-MANAGER:WRITE-MESSAGE(msg, "ERROR").
-END PROCEDURE.
-
-PROCEDURE LogWarn:
-  DEFINE INPUT PARAMETER msg AS CHARACTER NO-UNDO.
-
-  LOG-MANAGER:WRITE-MESSAGE(msg, "WARN").
-END PROCEDURE.
+Log:Information("Completed!").
