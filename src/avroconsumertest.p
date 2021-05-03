@@ -1,5 +1,5 @@
-USING OEKafka.* FROM PROPATH.
 USING ABLContainer.Logging.* FROM PROPATH.
+USING OEKafka.* FROM PROPATH.
 /* USING OpenEdge.Logging.ILogWriter. */
 /* USING OpenEdge.Logging.LoggerBuilder. */
 
@@ -26,6 +26,8 @@ DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
 brokers = "host.docker.internal:9092".
 topic = "test-topic-2".
+consumer_group = "rdkafka-consumer-group-1".
+offset_reset = "latest".
 debug = "".
 timeout = 10000.
 
@@ -132,7 +134,7 @@ DO WHILE consumerNumMessage < 100
     Log:Information("    Got MESSAGE").
 
     DEFINE VARIABLE avroMessage AS AvroMessage NO-UNDO.
-    avroMessage = NEW AvroMessage(librdkafkaWrapper, rkm).
+    avroMessage = NEW AvroMessage(librdkafkaWrapper, rkm, "EventPayloadJson").
 
     IF avroMessage:err = 1 THEN DO:
       Log:Error("    Got Error!").

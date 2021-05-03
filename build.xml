@@ -26,6 +26,13 @@
         <pathelement path="ablcontainer/OpenEdge.Core.pl"/>
     </path>
 
+    <!-- propath set -->
+    <path id="propath_app_oe12">
+        <pathelement path="src"/>
+        <pathelement path="ablcontainer/oe12/ABLContainer.pl"/>
+        <pathelement path="ablcontainer/oe12/OpenEdge.Core.pl"/>
+    </path>
+
     <!-- propath set tests -->
     <path id="propath_app_tests">
         <pathelement path="tools/ablunit/ABLUnitMods.pl"/>
@@ -57,6 +64,7 @@
     <DBConnectionSet id="app_dbs">
         <DBConnection id="app_dev" logicalName="app" dbName="app" dbDir="${dest.db}" singleUser="true"/>
     </DBConnectionSet>
+    <DBConnectionSet id="app_dbs_none"/>
 
     <!-- clean -->
     <target name="clean" depends="shutdown" description="Remove ALL build artifacts and compile DB">
@@ -68,7 +76,7 @@
 
     <target name="setup" depends="shutdown,clean,init" description="Initial setup"/>
 
-    <target name="build" depends="init,restore,compile,test,copy_static"/>
+    <target name="build" depends="init,restore,compile,compile-oe12,test,copy_static"/>
 
     <target name="init" depends="shutdown,createdb,proserve" description="Prepare for compile">
         <mkdir dir="${clean.build}"/>
@@ -100,7 +108,8 @@
 
       <property name="absolute.temp" location="${env.TEMP_DIR}"/>
 
-      <oecompile baseDir="src"
+      <oecompile dlcHome="${env.OEDLC11}"
+                 baseDir="src"
                  databasesid="app_dbs"
                  propathid="propath_app"
                  filesetid="fileset_app"
@@ -111,16 +120,39 @@
                  />
 
       <buildpl baseDir="build/oe11/"
-               destDir="build/oe11/pl/"
-               libraryFile="app.pl"/>
+               destDir="build/oe11pl/"
+               libraryFile="OEKafka.pl"/>
     </target>
+
+    <!-- compile oe12 -->
+    <target name="compile-oe12" description="Compile" depends="">
+
+      <property name="absolute.temp" location="${env.TEMP_DIR}"/>
+
+      <oecompile dlcHome="${env.OEDLC12}"
+                 baseDir="src"
+                 databasesid="app_dbs_none"
+                 propathid="propath_app_oe12"
+                 filesetid="fileset_app"
+                 tempDir="${absolute.temp}"
+                 destDir="build/oe12/"
+                 assembliesDir="../assemblies"
+                 metadata="false"
+                 />
+
+      <buildpl baseDir="build/oe12/"
+               destDir="build/oe12pl/"
+               libraryFile="OEKafka.pl"/>
+    </target>
+
 
     <!-- test -->
     <!-- test -->
     <target name="test" description="Test" depends="">
       <property name="absolute.temp" location="${env.TEMP_DIR}"/>
 
-      <oecompile baseDir="tests"
+      <oecompile dlcHome="${env.OEDLC11}"
+                 baseDir="tests"
                  databasesid="app_dbs"
                  propathid="propath_app_tests"
                  filesetid="fileset_app_tests_compile"
@@ -132,7 +164,8 @@
 
       <property name="absolute.temp" location="${env.TEMP_DIR}"/>
 
-      <oetest baseDir="tests"
+      <oetest dlcHome="${env.OEDLC11}"
+              baseDir="tests"
               databasesid="app_dbs"
               propathid="propath_app_tests"
               filesetid="fileset_app_tests"
@@ -155,7 +188,7 @@
 
     <!-- restore -->
     <target name="restore" description="Restore" depends="">
-        <nugetrestore
+        <!-- <nugetrestore
           nugetExecutable="tools/nuget.exe"
           packagesFile="tools/packages.config"
           destinationDir="tools/packages"/>
@@ -168,7 +201,7 @@
         <addpackagestoassemblies
           packagesFile="packages.config"
           packagesDir="packages"
-          assembliesDir="assemblies"/>
+          assembliesDir="assemblies"/> -->
 
         <!-- any native code -->
         <!-- <copy todir="assemblies/native" flatten="true">
@@ -190,10 +223,11 @@
         </copy>
 
         <!-- copy ablcontainer pl to build area -->
-        <copy todir="build/ablcontainer/pl/" flatten="true">
+        <copy todir="build/ablcontainer/oe11pl/" flatten="true">
           <fileset dir="ablcontainer">
-            <include name="**/*.pl"/>
-            <different targetdir="build/ablcontainer/pl/" ignoreFileTimes="true">
+            <include name="*.pl"/>
+            <include name="*.r"/>
+            <different targetdir="build/ablcontainer/oe11pl/" ignoreFileTimes="true">
                 <mapper type="flatten"/>
             </different>
           </fileset>

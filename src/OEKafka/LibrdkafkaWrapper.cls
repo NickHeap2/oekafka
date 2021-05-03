@@ -1,6 +1,5 @@
-USING Progress.Lang.*.
-/* USING OpenEdge.Logging.ILogWriter. */
-/* USING OpenEdge.Logging.LoggerBuilder. */
+USING OEKafka.* FROM PROPATH.
+USING Progress.Lang.* FROM PROPATH.
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
 
@@ -39,16 +38,31 @@ PROCEDURE wrapper_subscribe_to_topic EXTERNAL {&librdkafka-wrapper}:
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 
-PROCEDURE wrapper_produce_message EXTERNAL {&librdkafka-wrapper}:
+/*PROCEDURE wrapper_produce_message EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER key_len AS INT64 NO-UNDO.
   DEFINE INPUT  PARAMETER payload AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER len AS INT64 NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.*/
+
+PROCEDURE wrapper_produce_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER key_len AS INT64 NO-UNDO.
+  DEFINE INPUT  PARAMETER payload AS MEMPTR NO-UNDO.
+  DEFINE INPUT  PARAMETER len AS INT64 NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 
 PROCEDURE wrapper_get_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER timeout AS LONG NO-UNDO.
+  DEFINE RETURN PARAMETER rkm AS INT64 NO-UNDO.
+END.
+
+PROCEDURE wrapper_get_last_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER timeout AS LONG NO-UNDO.
   DEFINE RETURN PARAMETER rkm AS INT64 NO-UNDO.
 END.
@@ -94,7 +108,15 @@ END.
 PROCEDURE wrapper_create_avro_message EXTERNAL {&librdkafka-wrapper}:
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
+PROCEDURE wrapper_create_avro_offset EXTERNAL {&librdkafka-wrapper}:
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
 PROCEDURE wrapper_add_value_to_message_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER field_value AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_add_value_to_offset_string EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER field_value AS CHARACTER NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
@@ -103,24 +125,41 @@ PROCEDURE wrapper_get_value_from_message_string EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
+PROCEDURE wrapper_get_value_from_offset_string EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER field_name AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
 PROCEDURE wrapper_destroy_avro_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_destroy_avro_offset EXTERNAL {&librdkafka-wrapper}:
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 PROCEDURE wrapper_destroy_serdes EXTERNAL {&librdkafka-wrapper}:
 END.
-PROCEDURE wrapper_serialiase_and_send_message EXTERNAL {&librdkafka-wrapper}:
+PROCEDURE wrapper_serialise_and_send_message EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
+  DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
+  DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
+END.
+PROCEDURE wrapper_serialise_and_send_offset EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER topic AS CHARACTER NO-UNDO.
   DEFINE INPUT  PARAMETER key AS CHARACTER NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 
-PROCEDURE wrapper_deserialiase_message_key EXTERNAL {&librdkafka-wrapper}:
+PROCEDURE wrapper_flush EXTERNAL {&librdkafka-wrapper}:
+  DEFINE INPUT  PARAMETER timeout_ms AS LONG NO-UNDO.
+  DEFINE RETURN PARAMETER queue_size AS LONG NO-UNDO.
+END PROCEDURE.
+
+PROCEDURE wrapper_deserialise_message_key EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER rkm AS INT64 NO-UNDO.
   DEFINE OUTPUT PARAMETER avro_value AS INT64 NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
 END.
 
-PROCEDURE wrapper_deserialiase_message_value EXTERNAL {&librdkafka-wrapper}:
+PROCEDURE wrapper_deserialise_message_value EXTERNAL {&librdkafka-wrapper}:
   DEFINE INPUT  PARAMETER rkm AS INT64 NO-UNDO.
   DEFINE OUTPUT PARAMETER avro_value AS INT64 NO-UNDO.
   DEFINE RETURN PARAMETER callresult AS LONG NO-UNDO.
@@ -160,21 +199,6 @@ END.
 
 PROCEDURE wrapper_clear_values EXTERNAL {&librdkafka-wrapper}:
 END.
-
-/*
-int wrapper_extract_key_and_value(rd_kafka_message_t* rkm);
-char* wrapper_get_key();
-char* wrapper_get_value_field_string(char* field_name);
-void wrapper_clear_values();
-*/
-/*
-int wrapper_deserialiase_message_key(rd_kafka_message_t* rkm, avro_value_t* avro);
-int wrapper_deserialiase_message_value(rd_kafka_message_t* rkm, avro_value_t* avro);
-void wrapper_destroy_avro_value(avro_value_t* avro);
-void wrapper_get_avro_string(avro_value_t* avro_value, const char** string, size_t size);
-int wrapper_get_value_field(avro_value_t* avro_source, avro_value_t* avro_field, char* field_name);
-*/
-
 
 CONSTRUCTOR PUBLIC LibrdkafkaWrapper():
   /* logger = LoggerBuilder:GetLogger("Default"). */
@@ -248,7 +272,109 @@ METHOD INT64 GetMessage(timeout AS INTEGER):
 
 END METHOD.
 
-METHOD INTEGER ProduceMessage(topic AS CHARACTER, KEY AS CHARACTER, payload AS CHARACTER):
+METHOD INT64 GetLastMessage(topicName AS CHARACTER, timeout AS INTEGER):
+
+  DEFINE VARIABLE rkm AS INT64 NO-UNDO.
+
+  RUN wrapper_get_last_message
+    (INPUT topicName,
+     INPUT timeout,
+     OUTPUT rkm).
+
+  RETURN rkm.
+
+END METHOD.
+
+METHOD AvroMessage GetAvroLastMessage(topicName AS CHARACTER, timeout AS INTEGER, payloadField AS CHARACTER):
+
+  DEFINE VARIABLE rkm AS INT64 NO-UNDO.
+
+  RUN wrapper_get_last_message
+    (INPUT topicName,
+     INPUT timeout,
+     OUTPUT rkm).
+  IF (rkm = ? OR rkm = 0) THEN DO:
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("    Error getting MESSAGE rkm = ? or 0"), "INFO").
+    /*Log:Information("    No messages.").
+    IF lastError <> "" THEN DO:
+      Log:Error(SUBSTITUTE("    Error getting MESSAGE: &1", lastError)).
+    END.*/
+    RETURN ?.
+  END.
+  ELSE DO:
+    DEFINE VARIABLE avroMessage AS AvroMessage NO-UNDO.
+    avroMessage = NEW AvroMessage(THIS-OBJECT, rkm, payloadField).
+    IF avroMessage:err <> 0 THEN DO:
+      LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("    Error getting MESSAGE avroMessage:err <> 0"), "INFO").
+      RETURN ?.
+    END.
+
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Partition: &1: Offset: &2", avroMessage:partition, avroMessage:offset), "INFO").
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Key: &1", avroMessage:keyValue), "INFO").
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Payload: &1", avroMessage:payloadValue), "INFO").
+
+    RETURN avroMessage.
+  END.
+
+END METHOD.
+
+METHOD AvroMessage GetAvroMessage(timeout AS INTEGER, payloadField AS CHARACTER):
+
+  DEFINE VARIABLE rkm AS INT64 NO-UNDO.
+
+  RUN wrapper_get_message
+    (INPUT timeout,
+     OUTPUT rkm).
+  IF (rkm = ? OR rkm = 0) THEN DO:
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("    Error getting MESSAGE rkm = ? or 0"), "INFO").
+    /*Log:Information("    No messages.").
+    IF lastError <> "" THEN DO:
+      Log:Error(SUBSTITUTE("    Error getting MESSAGE: &1", lastError)).
+    END.*/
+    RETURN ?.
+  END.
+  ELSE DO:
+    DEFINE VARIABLE avroMessage AS AvroMessage NO-UNDO.
+    avroMessage = NEW AvroMessage(THIS-OBJECT, rkm, payloadField).
+    IF avroMessage:err = 1 THEN DO:
+      LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("    Error getting MESSAGE avroMessage:err = 1"), "INFO").
+      RETURN ?.
+    END.
+
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Partition: &1: Offset: &2", avroMessage:partition, avroMessage:offset), "INFO").
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Key: &1", avroMessage:keyValue), "INFO").
+    LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Payload: &1", avroMessage:payloadValue), "INFO").
+
+    RETURN avroMessage.
+  END.
+
+END METHOD.
+
+METHOD INTEGER ProduceMessage(topic AS CHARACTER, key AS CHARACTER, payload AS LONGCHAR):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  DEFINE VARIABLE memptrValue AS MEMPTR NO-UNDO.
+
+  SET-SIZE(memptrValue) = LENGTH(payload).
+  /*COPY-LOB FROM payload TO memptrValue.*/
+  PUT-STRING(memptrValue, 1) = payload.
+
+  RUN wrapper_produce_message
+    (INPUT topic,
+     key,
+     LENGTH(key),
+     memptrValue,
+     GET-SIZE(memptrValue),
+     OUTPUT callResult).
+
+  SET-SIZE(memptrValue) = 0.
+
+  RETURN callResult.
+
+END METHOD.
+
+METHOD INTEGER ProduceMessage(topic AS CHARACTER, key AS CHARACTER, payload AS CHARACTER):
 
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
@@ -258,6 +384,22 @@ METHOD INTEGER ProduceMessage(topic AS CHARACTER, KEY AS CHARACTER, payload AS C
      LENGTH(key),
      payload,
      LENGTH(payload),
+     OUTPUT callResult).
+
+  RETURN callResult.
+
+END METHOD.
+
+METHOD INTEGER ProduceOffset(topic AS CHARACTER, key AS CHARACTER, offsetValue AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_produce_message
+    (INPUT topic,
+     key,
+     LENGTH(key),
+     offsetValue,
+     LENGTH(offsetValue),
      OUTPUT callResult).
 
   RETURN callResult.
@@ -376,11 +518,53 @@ METHOD INTEGER CreateAvroMessage():
   RETURN callResult.
 END METHOD.
 
+METHOD INTEGER CreateAvroOffset():
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_create_avro_offset
+    (OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
 METHOD INTEGER AddValueToMessageString(fieldName AS CHARACTER, fieldValue AS CHARACTER):
 
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
   RUN wrapper_add_value_to_message_string
+    (INPUT fieldName,
+     INPUT fieldValue,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER AddValueToOffsetString(fieldName AS CHARACTER, fieldValue AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_add_value_to_offset_string
+    (INPUT fieldName,
+     INPUT fieldValue,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER AddValueToMessageString(fieldName AS CHARACTER, fieldValue AS LONGCHAR):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_add_value_to_message_string
+    (INPUT fieldName,
+     INPUT fieldValue,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER AddValueToOffsetString(fieldName AS CHARACTER, fieldValue AS LONGCHAR):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_add_value_to_offset_string
     (INPUT fieldName,
      INPUT fieldValue,
      OUTPUT callResult).
@@ -397,6 +581,16 @@ METHOD INTEGER GetValueFromMessageString(fieldName AS CHARACTER):
   RETURN callResult.
 END METHOD.
 
+METHOD INTEGER GetValueFromOffsetString(fieldName AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_get_value_from_offset_string
+    (INPUT fieldName,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
 METHOD INTEGER DestroyAvroMessage():
 
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
@@ -406,11 +600,31 @@ METHOD INTEGER DestroyAvroMessage():
   RETURN callResult.
 END METHOD.
 
+METHOD INTEGER DestroyAvroOffset():
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_destroy_avro_offset
+    (OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
 METHOD INTEGER SerialiseAndSendMessage(topic AS CHARACTER, key AS CHARACTER):
 
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
 
-  RUN wrapper_serialiase_and_send_message
+  RUN wrapper_serialise_and_send_message
+    (INPUT topic,
+     INPUT key,
+     OUTPUT callResult).
+  RETURN callResult.
+END METHOD.
+
+METHOD INTEGER SerialiseAndSendOffset(topic AS CHARACTER, key AS CHARACTER):
+
+  DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
+
+  RUN wrapper_serialise_and_send_offset
     (INPUT topic,
      INPUT key,
      OUTPUT callResult).
@@ -422,8 +636,8 @@ METHOD CHARACTER GetMessageKey(rkm AS INT64):
   DEFINE VARIABLE callResult AS INTEGER NO-UNDO.
   DEFINE VARIABLE avro_key AS INT64 NO-UNDO.
 
-  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Calling wrapper_deserialiase_message_key"), "INFO").
-  RUN wrapper_deserialiase_message_key
+  LOG-MANAGER:WRITE-MESSAGE(SUBSTITUTE("        Calling wrapper_deserialise_message_key"), "INFO").
+  RUN wrapper_deserialise_message_key
     (INPUT rkm,
      OUTPUT avro_key,
      OUTPUT callResult).
@@ -471,7 +685,7 @@ METHOD CHARACTER GetMessageKey(rkm AS INT64):
   END.*/
 
 
-  /*RUN wrapper_serialiase_and_send_message
+  /*RUN wrapper_serialise_and_send_message
   (INPUT topic,
    INPUT key,
    OUTPUT callResult).
@@ -542,6 +756,16 @@ METHOD CHARACTER GetValueFieldString(fieldName AS CHARACTER):
 /*  SET-POINTER-VALUE(p_field_value) = 0.      */
 
   RETURN field_value.
+END METHOD.
+
+METHOD INTEGER Flush (timeoutMs AS INTEGER):
+  DEFINE VARIABLE queueLength AS INTEGER NO-UNDO.
+
+  RUN wrapper_flush
+    (INPUT timeoutMs,
+     OUTPUT queueLength).
+  RETURN queueLength.
+
 END METHOD.
 
 METHOD INTEGER ClearValues():

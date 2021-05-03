@@ -1,0 +1,1 @@
+mpro -b -p ukmailtest.p -clientlog mpro -logginglevel 2 -logentrytypes DB.Connects,4GLMessages

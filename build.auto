@@ -16,11 +16,9 @@
       "initialDelayMs": 1000
     },
     {
-      "filePattern": "**/*.{p,w,i,cls}",
-      "runTargets": "compile test",
+      "filePattern": "src/**/*.{p,w,i,cls}",
+      "runTargets": "compile",
       "initialDelayMs": 1000
-    }  ],
-  "disabled": [
-
+    }
   ]
 }

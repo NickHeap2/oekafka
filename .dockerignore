@@ -1,5 +1,5 @@
 *
-!build/oe11/pl/**/*.pl
+!build/oe11pl/**/*.pl
 !build/ablcontainer/pl/**/*.pl
 !build/assemblies/**/*
 !build/static/**/*
@@ -14,4 +14,4 @@
 !logging.config
 !test
 !_progres
-!ablcontainer/*
+!build/ablcontainer/oe11pl/*

@@ -1,5 +1,5 @@
 USING OEKafka.* FROM PROPATH.
-USING Progress.Lang.*.
+USING Progress.Lang.* FROM PROPATH.
 
 BLOCK-LEVEL ON ERROR UNDO, THROW.
 
@@ -53,24 +53,19 @@ CLASS OEKafka.AvroMessage:
   GET.
   SET.
 
-  DEFINE PUBLIC PROPERTY librdkafkaWrapper AS LibrdkafkaWrapper NO-UNDO
+  DEFINE PUBLIC PROPERTY errorMessage AS CHARACTER NO-UNDO
   GET.
   SET.
 
-CONSTRUCTOR PUBLIC AvroMessage (librdkafkaWrapper AS LibrdkafkaWrapper, rkm AS INT64):
+  DEFINE PUBLIC PROPERTY librdkafka AS LibrdkafkaWrapper NO-UNDO
+  GET.
+  SET.
+
+CONSTRUCTOR PUBLIC AvroMessage (librdkafka AS LibrdkafkaWrapper, rkm AS INT64, payloadField AS CHARACTER):
   DEFINE VARIABLE ptr_rkm AS MEMPTR NO-UNDO.
 
-  THIS-OBJECT:librdkafkaWrapper = librdkafkaWrapper.
+  THIS-OBJECT:librdkafka = librdkafka.
   THIS-OBJECT:rkm = rkm.
-
-/*  THIS-OBJECT:keyValue = THIS-OBJECT:librdkafkaWrapper:GetMessageKey(rkm).*/
-
-  /*MESSAGE "keyValue:".
-  MESSAGE keyValue.*/
-  THIS-OBJECT:librdkafkaWrapper:ExtractKeyAndValue(rkm).
-  THIS-OBJECT:keyValue = THIS-OBJECT:librdkafkaWrapper:GetKey().
-  THIS-OBJECT:payloadValue = THIS-OBJECT:librdkafkaWrapper:GetValueFieldString("EventPayloadJson").
-  THIS-OBJECT:librdkafkaWrapper:ClearValues().
 
   SET-POINTER-VALUE(ptr_rkm) = rkm.
   THIS-OBJECT:err = GET-BYTES(ptr_rkm, 1, 8).
@@ -82,6 +77,31 @@ CONSTRUCTOR PUBLIC AvroMessage (librdkafkaWrapper AS LibrdkafkaWrapper, rkm AS I
   THIS-OBJECT:key_len = GET-BYTES(ptr_rkm, 49, 56).
   THIS-OBJECT:offset = GET-BYTES(ptr_rkm, 57, 64).
   THIS-OBJECT:private = GET-BYTES(ptr_rkm, 65, 72).
+
+/*  THIS-OBJECT:keyValue = THIS-OBJECT:librdkafka:GetMessageKey(rkm).*/
+
+  /* is this an error message? */
+  IF THIS-OBJECT:err <> 0 THEN DO:
+    errorMessage = THIS-OBJECT:librdkafka:GetLastError().
+    RETURN.
+  END.
+
+  /*MESSAGE "keyValue:".
+  MESSAGE keyValue.*/
+  DEFINE VARIABLE callresult AS INTEGER NO-UNDO.
+  DEFINE VARIABLE lastError   AS CHARACTER NO-UNDO.
+
+  callresult = THIS-OBJECT:librdkafka:ExtractKeyAndValue(rkm).
+  IF callresult <> 0 THEN DO:
+    lastError = THIS-OBJECT:librdkafka:GetLastError().
+    UNDO, THROW NEW AppError(SUBSTITUTE("Failed to extract key and value with result: &1 error message: &2", callresult, lastError)).
+  END.
+
+  THIS-OBJECT:keyValue = THIS-OBJECT:librdkafka:GetKey().
+
+  THIS-OBJECT:payloadValue = THIS-OBJECT:librdkafka:GetValueFieldString(payloadField).
+
+  THIS-OBJECT:librdkafka:ClearValues().
 
   /*
   DEFINE VARIABLE readableStart AS INTEGER NO-UNDO.
@@ -131,7 +151,7 @@ END CONSTRUCTOR.
 
 DESTRUCTOR PUBLIC AvroMessage():
 
-  THIS-OBJECT:librdkafkaWrapper:DestroyMessage(THIS-OBJECT:rkm).
+  THIS-OBJECT:librdkafka:DestroyMessage(THIS-OBJECT:rkm).
 
 END DESTRUCTOR.
 

@@ -42,6 +42,8 @@ DO ON STOP UNDO, LEAVE:
   librdkafkaWrapper:SetConfigOption("auto.offset.reset", offset_reset).
 /*  librdkafkaWrapper:SetConfigOption("junk", "setting").*/
 
+  librdkafkaWrapper:SetConfigOption("linger.ms", "5").
+
   CATCH ae AS Progress.Lang.AppError:
     RUN LogFatal(INPUT ae:GetMessage(1)).
     QUIT.
@@ -133,6 +135,9 @@ END.
 
 DEFINE VARIABLE rkm AS INT64 NO-UNDO.
 
+
+DEFINE VARIABLE sentMessages AS INTEGER NO-UNDO.
+
 _GET_MESSAGES:
 DO WHILE TRUE
   ON ENDKEY UNDO, LEAVE
@@ -152,14 +157,13 @@ DO WHILE TRUE
     RUN LogError(INPUT SUBSTITUTE("    Error creating avro message: &1", lastError)).
   END.
 
+  DEFINE VARIABLE jsonPayload AS LONGCHAR NO-UNDO.
+  jsonPayload = "~{ 'json_value': 'the_value' ~}".
 
-  callResult = librdkafkaWrapper:AddValueToMessageString("EventPayloadJson", "~{ 'json_value': 'the_value' ~}").
+  callResult = librdkafkaWrapper:AddValueToMessageString("EventPayloadJson", jsonPayload).
   lastError = librdkafkaWrapper:GetLastError().
   IF callResult <> 0 THEN DO:
     RUN LogError(INPUT SUBSTITUTE("    Failed to set EventPayloadJson value with error:  &1", lastError)).
-  END.
-  ELSE IF lastError <> "" THEN DO:
-    RUN LogError(INPUT SUBSTITUTE("    Error setting EventPayloadJson value: &1", lastError)).
   END.
 
   callResult = librdkafkaWrapper:SerialiseAndSendMessage(topic, "KEY-1").
@@ -167,17 +171,28 @@ DO WHILE TRUE
   IF callResult <> 0 THEN DO:
     RUN LogError(INPUT SUBSTITUTE("    Failed to serialise and send message with error:  &1", lastError)).
   END.
-  ELSE IF lastError <> "" THEN DO:
-    RUN LogError(INPUT SUBSTITUTE("    Error serialising and sending message value: &1", lastError)).
-  END.
 
   callResult = librdkafkaWrapper:DestroyAvroMessage().
   lastError = librdkafkaWrapper:GetLastError().
   IF callResult <> 0 THEN DO:
     RUN LogError(INPUT SUBSTITUTE("    Failed to destroy avro message with error:  &1", lastError)).
   END.
-  ELSE IF lastError <> "" THEN DO:
-    RUN LogError(INPUT SUBSTITUTE("    Error destroying avro message: &1", lastError)).
+
+  sentMessages = sentMessages + 1.
+  IF sentMessages MOD 1000 = 0 THEN DO:
+    DEFINE VARIABLE queueLength AS INTEGER NO-UNDO.
+    RUN LogInfo(INPUT SUBSTITUTE("    Flushing queue...", queueLength)).
+
+    _EMPTY_QUEUE:
+    DO WHILE TRUE:
+      queueLength = librdkafkaWrapper:Flush(100).
+      IF (queueLength > 0) THEN DO:
+        RUN LogWarn(INPUT SUBSTITUTE("    WARNING queue still contains &1 messages", queueLength)).
+        NEXT _EMPTY_QUEUE.
+      END.
+
+      LEAVE _EMPTY_QUEUE.
+    END.
   END.
 
   /*RUN LogInfo(INPUT "Sending message...").
